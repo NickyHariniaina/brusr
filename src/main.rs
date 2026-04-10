@@ -37,6 +37,32 @@ struct Parser {
 }
 
 impl Parser {
+    fn parse_simple_selector(&mut self) -> SimpleSelector {
+        let mut selector = SimpleSelector::default();
+        while !self.eof() {
+            match self.next_char() {
+                '#' => {
+                    self.consume_char();
+                    selector.id = Some(self.parse_identifier());
+                }
+                '.' => {
+                    self.consume_char();
+                    selector.class.push(self.parse_identifier());
+                }
+                '*' => {
+                    self.consume_char();
+                }
+                c if valid_identifier_char(c) => {
+                    selector.tag_name = Some(self.parse_identifier());
+                }
+                _ => {
+                    break;
+                }
+            }
+            return selector;
+        }
+    }
+
     fn consume_char(&mut self) -> char {
         let c = self.next_char();
         self.pos += c.len_utf8();
@@ -149,7 +175,11 @@ impl Parser {
 }
 
 fn parse(source: String) -> Node {
-    let mut nodes = Parser { pos: 0, input: source}.parse_nodes();
+    let mut nodes = Parser {
+        pos: 0,
+        input: source,
+    }
+    .parse_nodes();
     if nodes.len() == 1 {
         return nodes.remove(0);
     }
@@ -175,9 +205,19 @@ struct SimpleSelector {
     class: Vec<String>,
 }
 
+impl Default for SimpleSelector {
+    fn default() -> Self {
+        Self {
+            tag_name: None,
+            id: None,
+            class: Vec::new(),
+        }
+    }
+}
+
 struct Declaration {
     name: String,
-    value: Value
+    value: Value,
 }
 
 enum Value {
@@ -196,5 +236,19 @@ struct Color {
     b: u8,
     a: u8,
 }
+fn valid_identifier_char(c: char) -> bool {
+    matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_')
+}
 
+pub type Specificity = (usize, usize, usize);
+
+impl Selector {
+    pub fn specificity(&self) -> Specificity {
+        let Selector::Simple(ref simple) = *self;
+        let a = simple.id.iter().count();
+        let b = simple.class.len();
+        let c = simple.tag_name.iter().count();
+        return (a, b, c);
+    }
+}
 fn main() {}
