@@ -37,6 +37,30 @@ struct Parser {
 }
 
 impl Parser {
+    fn parse_rule(&mut self) -> Rule {
+        Rule {
+            selectors: self.parse_selectors(),
+            declarations: self.parse_declarations(),
+        }
+    }
+
+    fn parse_selectors(&mut self) -> Vec<Selector> {
+        let mut selectors = Vec::new();
+        loop {
+            selectors.push(Selector::Simple(self.parse_simple_selector()));
+            self.consume_whitespace();
+            match self.next_char() {
+                ',' => {
+                    self.consume_char();
+                    self.consume_whitespace();
+                }
+                '{' => break, // start of declarations
+                c => panic!("Unexpected character {} in selector list", c),
+            }
+        }
+        selectors.sort_by(|a, b| b.specificity().cmp(&a.specificity()));
+        return selectors;
+    }
     fn parse_simple_selector(&mut self) -> SimpleSelector {
         let mut selector = SimpleSelector::default();
         while !self.eof() {
@@ -251,4 +275,5 @@ impl Selector {
         return (a, b, c);
     }
 }
+
 fn main() {}
